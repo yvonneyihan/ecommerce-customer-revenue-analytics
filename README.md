@@ -73,6 +73,15 @@ dashboard/
 
 ## Source data
 
+**Dataset:** [E-Commerce Sales & Customer Analytics Dataset](https://www.kaggle.com/datasets/maramsa/e-commerce-sales-and-customer-analytics-dataset) by [maramsa](https://www.kaggle.com/maramsa) on Kaggle, licensed under [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0).
+
+Downloaded from Kaggle and used unmodified in `data/raw/`. Product names in the source data are
+placeholders (`Product_1`, `Product_2`, ...), which suggests this is a
+synthetically generated dataset rather than real transaction records — that
+doesn't affect its usefulness for demonstrating the analytics workflow here,
+but it's worth knowing findings describe the dataset's patterns, not an
+actual company's.
+
 Provided as five CSVs under `data/raw/`:
 
 | File | Grain | Key columns |
@@ -120,6 +129,12 @@ psql -d ecommerce_analytics -f sql/03_fact_sales.sql
 
 See `sql/README.md` for SQL-specific notes (including running against DuckDB
 if you don't have a local Postgres server).
+
+## License
+
+The code in this repository (notebooks, SQL, docs) is licensed under the
+[MIT License](LICENSE). The dataset in `data/raw/` is separately licensed by
+its original author under Apache 2.0 — see [Source data](#source-data) above.
 
 ## Author
 
