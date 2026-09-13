@@ -27,6 +27,20 @@ The analysis is organized around five questions:
 Findings are written up as explicit **observations vs. recommendations** in
 `reports/findings.md` (added once the analysis notebooks are complete).
 
+## Key findings so far
+
+From `notebooks/02_exploratory_data_analysis.ipynb` (full detail in that notebook's Section 9):
+
+<p>
+  <img src="reports/figures/01_monthly_revenue.png" alt="Monthly revenue, Jan–Dec 2024" width="420">
+  <img src="reports/figures/07_new_vs_returning.png" alt="New vs returning customer revenue by month" width="420">
+</p>
+
+- **Total revenue is flat for 2024** (~$23K–$31K/month, +0.2% average MoM growth) — no sustained growth or decline.
+- **That flat total is hiding a real problem:** new-customer revenue falls almost every month, from $30,948 in January to ~$2,000 by November/December, while returning-customer revenue grows to compensate. Flat revenue is currently being propped up by the existing customer base, not new acquisition.
+- **Repeat purchase behavior is strong** — 73.4% of customers placed 2+ completed orders (avg. 2.60 orders/customer) — so the retention side isn't the issue; the acquisition funnel is the more likely place to investigate.
+- Revenue is well balanced across product categories (Hair 32.7% down to Skin 16.8%) and countries (Italy 22.7% down to Germany 15.9%) — no single category or market the business is overexposed to.
+
 ## Project status
 
 This repo is being built in phases. Current state:
@@ -34,7 +48,7 @@ This repo is being built in phases. Current state:
 - [x] Project scaffolding, `.gitignore`, `requirements.txt`
 - [x] Data profiling, validation, and cleaning (`notebooks/01`)
 - [x] SQL schema, load scripts, and a `fact_sales` view (`sql/01`–`03`)
-- [ ] Revenue trend EDA (`notebooks/02`, `sql/04`)
+- [x] Revenue trend EDA (`notebooks/02`)
 - [ ] RFM segmentation (`notebooks/03`, `sql/05`)
 - [ ] Cohort retention (`notebooks/04`, `sql/06`)
 - [ ] Product performance (`notebooks/05`, `sql/07`)
@@ -58,7 +72,9 @@ data/
 notebooks/
   01_data_cleaning_validation.ipynb   profiling, validation, cleaning rules,
                                        builds fact_sales / fact_sales_completed
-  02-05 ...                           EDA, RFM, cohort, product performance (planned)
+  02_exploratory_data_analysis.ipynb  revenue trend, MoM growth, order volume,
+                                       AOV, category/region mix, new vs returning
+  03-05 ...                           RFM, cohort, product performance (planned)
 sql/
   01_schema.sql            table definitions + constraints
   02_load_data.sql         \copy load script + row-count sanity check
