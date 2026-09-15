@@ -41,6 +41,10 @@ From `notebooks/02_exploratory_data_analysis.ipynb` (full detail in that noteboo
 - **Repeat purchase behavior is strong** — 73.4% of customers placed 2+ completed orders (avg. 2.60 orders/customer) — so the retention side isn't the issue; the acquisition funnel is the more likely place to investigate.
 - Revenue is well balanced across product categories (Hair 32.7% down to Skin 16.8%) and countries (Italy 22.7% down to Germany 15.9%) — no single category or market the business is overexposed to.
 
+**Power BI:** the same KPIs and charts, live in Power BI Service — see [`dashboard/README.md`](dashboard/README.md).
+
+<img src="dashboard/screenshots/Revenue_Overview.png" alt="Power BI Revenue Overview dashboard page" width="800">
+
 ## Project status
 
 This repo is being built in phases. Current state:
@@ -53,7 +57,8 @@ This repo is being built in phases. Current state:
 - [ ] Cohort retention (`notebooks/04`, `sql/06`)
 - [ ] Product performance (`notebooks/05`, `sql/07`)
 - [ ] Business recommendations write-up (`reports/findings.md`)
-- [ ] Power BI dashboard (`dashboard/`)
+- [x] Power BI dashboard — Revenue Overview page (`dashboard/`)
+- [ ] Power BI dashboard — RFM / cohort / product performance pages
 
 ## Tech stack
 
@@ -79,12 +84,16 @@ sql/
   01_schema.sql            table definitions + constraints
   02_load_data.sql         \copy load script + row-count sanity check
   03_fact_sales.sql        fact_sales / fact_sales_completed views
-  04-07 ...                analysis queries (planned, one per notebook)
+  04_revenue_trends.sql    pre-aggregated exports feeding the Power BI Revenue
+                            Overview page
+  05-07 ...                analysis queries (planned, one per notebook)
 reports/
   figures/                 exported chart images
   findings.md              observations vs. recommendations (planned)
 dashboard/
-  README.md                Power BI data model + measures (planned)
+  README.md                Power BI page write-ups
+  data/                    CSV/xlsx exports uploaded to Power BI Service
+  screenshots/             dashboard page screenshots
 ```
 
 ## Source data
