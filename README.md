@@ -25,7 +25,7 @@ The analysis is organized around five questions:
    revenue contribution, concentration
 
 Findings are written up as explicit **observations vs. recommendations** in
-`reports/findings.md` (added once the analysis notebooks are complete).
+[`reports/findings.md`](reports/findings.md).
 
 ## Key findings so far
 
@@ -53,10 +53,11 @@ This repo is being built in phases. Current state:
 - [x] Data profiling, validation, and cleaning (`notebooks/01`)
 - [x] SQL schema, load scripts, and a `fact_sales` view (`sql/01`–`03`)
 - [x] Revenue trend EDA (`notebooks/02`)
-- [ ] RFM segmentation (`notebooks/03`, `sql/05`)
-- [ ] Cohort retention (`notebooks/04`, `sql/06`)
-- [ ] Product performance (`notebooks/05`, `sql/07`)
-- [ ] Business recommendations write-up (`reports/findings.md`)
+- [x] RFM segmentation (`notebooks/03`)
+- [x] Cohort retention (`notebooks/04`)
+- [x] Product performance (`notebooks/05`)
+- [ ] SQL exports for RFM / cohort / product performance (`sql/05`–`07`)
+- [x] Business recommendations write-up (`reports/findings.md`)
 - [x] Power BI dashboard — Revenue Overview page (`dashboard/`)
 - [ ] Power BI dashboard — RFM / cohort / product performance pages
 
@@ -79,17 +80,19 @@ notebooks/
                                        builds fact_sales / fact_sales_completed
   02_exploratory_data_analysis.ipynb  revenue trend, MoM growth, order volume,
                                        AOV, category/region mix, new vs returning
-  03-05 ...                           RFM, cohort, product performance (planned)
+  03_rfm_segmentation.ipynb           R/F/M scoring, 5 customer segments
+  04_cohort_retention.ipynb           acquisition cohorts, retention matrix
+  05_product_performance.ipynb        product/category revenue, volume, Pareto
 sql/
   01_schema.sql            table definitions + constraints
   02_load_data.sql         \copy load script + row-count sanity check
   03_fact_sales.sql        fact_sales / fact_sales_completed views
   04_revenue_trends.sql    pre-aggregated exports feeding the Power BI Revenue
                             Overview page
-  05-07 ...                analysis queries (planned, one per notebook)
+  05-07 ...                RFM / cohort / product performance exports (planned)
 reports/
   figures/                 exported chart images
-  findings.md              observations vs. recommendations (planned)
+  findings.md              5 findings, observations vs. recommendations
 dashboard/
   README.md                Power BI page write-ups
   data/                    CSV/xlsx exports uploaded to Power BI Service
@@ -142,8 +145,10 @@ full rationale.
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 
-# 1. Clean & validate the raw data, build fact_sales
-jupyter nbconvert --to notebook --execute --inplace notebooks/01_data_cleaning_validation.ipynb
+# 1. Run all 5 notebooks in order (01 must run first — it builds fact_sales)
+for nb in notebooks/0*.ipynb; do
+  jupyter nbconvert --to notebook --execute --inplace "$nb"
+done
 
 # 2. (optional) load the same data into PostgreSQL
 createdb ecommerce_analytics
