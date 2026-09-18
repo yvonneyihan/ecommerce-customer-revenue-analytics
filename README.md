@@ -56,7 +56,7 @@ This repo is being built in phases. Current state:
 - [x] RFM segmentation (`notebooks/03`)
 - [x] Cohort retention (`notebooks/04`)
 - [x] Product performance (`notebooks/05`)
-- [ ] SQL exports for RFM / cohort / product performance (`sql/05`–`07`)
+- [x] SQL exports for RFM / cohort / product performance (`sql/05`–`07`)
 - [x] Business recommendations write-up (`reports/findings.md`)
 - [x] Power BI dashboard — Revenue Overview page (`dashboard/`)
 - [ ] Power BI dashboard — RFM / cohort / product performance pages
@@ -89,7 +89,9 @@ sql/
   03_fact_sales.sql        fact_sales / fact_sales_completed views
   04_revenue_trends.sql    pre-aggregated exports feeding the Power BI Revenue
                             Overview page
-  05-07 ...                RFM / cohort / product performance exports (planned)
+  05_rfm_segmentation.sql  per-customer R/F/M scores and segments
+  06_cohort_retention.sql  cohort retention matrix (long format)
+  07_product_performance.sql  product/category revenue, Pareto ranking
 reports/
   figures/                 exported chart images
   findings.md              5 findings, observations vs. recommendations
@@ -150,11 +152,9 @@ for nb in notebooks/0*.ipynb; do
   jupyter nbconvert --to notebook --execute --inplace "$nb"
 done
 
-# 2. (optional) load the same data into PostgreSQL
+# 2. (optional) load the same data into PostgreSQL and rebuild the Power BI exports
 createdb ecommerce_analytics
-psql -d ecommerce_analytics -f sql/01_schema.sql
-psql -d ecommerce_analytics -f sql/02_load_data.sql
-psql -d ecommerce_analytics -f sql/03_fact_sales.sql
+for f in sql/0*.sql; do psql -d ecommerce_analytics -f "$f"; done
 ```
 
 See `sql/README.md` for SQL-specific notes (including running against DuckDB
