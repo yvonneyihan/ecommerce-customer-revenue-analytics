@@ -41,9 +41,16 @@ From `notebooks/02_exploratory_data_analysis.ipynb` (full detail in that noteboo
 - **Repeat purchase behavior is strong** — 73.4% of customers placed 2+ completed orders (avg. 2.60 orders/customer) — so the retention side isn't the issue; the acquisition funnel is the more likely place to investigate.
 - Revenue is well balanced across product categories (Hair 32.7% down to Skin 16.8%) and countries (Italy 22.7% down to Germany 15.9%) — no single category or market the business is overexposed to.
 
+From `notebooks/03_rfm_segmentation.ipynb`:
+
+- **Champions + Loyal customers (33.7% of the base) drive 51.2% of revenue.** Champions alone (10 customers, 3.7%) average $2,758 each.
+- **At Risk is the clearest win-back opportunity:** only 31 customers (11.6%), but averaging $1,631.55 each — nearly Champions-level value — and quiet for ~6 months on average.
+
 **Power BI:** the same KPIs and charts, live in Power BI Service — see [`dashboard/README.md`](dashboard/README.md).
 
 <img src="dashboard/screenshots/Revenue_Overview.png" alt="Power BI Revenue Overview dashboard page" width="800">
+
+<img src="dashboard/screenshots/RFM_Analysis.png" alt="Power BI RFM Analysis dashboard page" width="800">
 
 ## Project status
 
@@ -59,7 +66,8 @@ This repo is being built in phases. Current state:
 - [x] SQL exports for RFM / cohort / product performance (`sql/05`–`07`)
 - [x] Business recommendations write-up (`reports/findings.md`)
 - [x] Power BI dashboard — Revenue Overview page (`dashboard/`)
-- [ ] Power BI dashboard — RFM / cohort / product performance pages
+- [x] Power BI dashboard — RFM Analysis page (`dashboard/`)
+- [ ] Power BI dashboard — cohort / product performance pages
 
 ## Tech stack
 
