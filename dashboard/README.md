@@ -64,3 +64,25 @@ Two real bugs turned up during verification against `notebooks/03`'s numbers —
    These correctly average over every customer row, and — as a bonus — respond correctly to the segment slicer on the page (selecting "At Risk" recalculates to that segment's true average, rather than needing a separate lookup).
 
 A similar `Revenue %` measure (`DIVIDE(SUM(customer_rfm[monetary]), CALCULATE(SUM(customer_rfm[monetary]), ALL(customer_rfm)))`) was written for the Revenue % Segmentation chart, so each bar divides by the true grand total rather than being filtered by its own segment.
+
+## Page 3: Cohort Retention
+
+Built on `cohort_retention_long` (77 rows, one per cohort × months-since-acquisition) and `cohort_sizes` (12 rows, one per cohort month), both exported by [`sql/06_cohort_retention.sql`](../sql/06_cohort_retention.sql) and packaged in [`data/cohort_retention.xlsx`](data/cohort_retention.xlsx).
+
+![Cohort Retention KPI cards](screenshots/Cohort_Retention_KPIs.png)
+![Cohort Retention dashboard page](screenshots/Cohort_Retention.png)
+
+**KPI cards:** Total Cohort Size (267), Avg. Retention (%) Period 1 (17.9%). Period 1 — the first full month after a customer's first purchase — is used rather than a later period because it's the only period nearly every cohort (11 of 12) has actually had a chance to reach yet, given the data only runs through December 2024; it's also the exact metric `notebooks/04` used to test (and rule out) declining retention quality across cohorts.
+
+**Cohort Size by Month** (bar chart, from `cohort_sizes`) — this is the headline chart on the page: 61 new customers in January falling steadily to 4 in December. This is the real cause behind `notebooks/02`'s declining new-customer-revenue finding — fewer new customers being acquired each month, not a retention problem. A **Cohort Month slicer** sits above this chart, letting a viewer filter both it and the matrix down to a single cohort.
+
+**Retention Matrix** (from `cohort_retention_long`, pivoted as a Power BI Matrix with `cohort_month` on rows and `period_number` on columns) — the same triangular retention heatmap as `notebooks/04`, with conditional-formatting background color standing in for the notebook's `imshow` heatmap. Every cell checked against the notebook's saved output matches exactly (e.g. January: 100, 11.5, 26.2, 18.0, 18.0, 14.8, 9.8, 29.5, 18.0, 19.7, 23.0, 11.5).
+
+**Data source:**
+
+| Table | Rows | Built by |
+|---|---|---|
+| `cohort_retention_long` | 77 | `sql/06_cohort_retention.sql` |
+| `cohort_sizes` | 12 | `sql/06_cohort_retention.sql` |
+
+Both verified against `notebooks/04_cohort_retention.ipynb`'s output — see `sql/06_cohort_retention.sql`'s header comment. No aggregation-type bugs this time (unlike Page 2): `cohort_sizes` is already exactly one row per cohort month, so there's no raw per-row table being summed/averaged incorrectly the way `customer_rfm` was on the RFM page.

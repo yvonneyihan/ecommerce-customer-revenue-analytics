@@ -46,11 +46,18 @@ From `notebooks/03_rfm_segmentation.ipynb`:
 - **Champions + Loyal customers (33.7% of the base) drive 51.2% of revenue.** Champions alone (10 customers, 3.7%) average $2,758 each.
 - **At Risk is the clearest win-back opportunity:** only 31 customers (11.6%), but averaging $1,631.55 each — nearly Champions-level value — and quiet for ~6 months on average.
 
+From `notebooks/04_cohort_retention.ipynb`:
+
+- **New-customer acquisition collapsed steadily all year** — 61 new customers in January down to just 4 in December — which is the direct, concrete cause of the declining new-customer revenue found in `notebooks/02`.
+- **Retention itself is not the problem:** cohort analysis shows no evidence retention quality declined over time; average period-1 retention across all cohorts is 17.9%.
+
 **Power BI:** the same KPIs and charts, live in Power BI Service — see [`dashboard/README.md`](dashboard/README.md).
 
 <img src="dashboard/screenshots/Revenue_Overview.png" alt="Power BI Revenue Overview dashboard page" width="800">
 
 <img src="dashboard/screenshots/RFM_Analysis.png" alt="Power BI RFM Analysis dashboard page" width="800">
+
+<img src="dashboard/screenshots/Cohort_Retention.png" alt="Power BI Cohort Retention dashboard page" width="800">
 
 ## Project status
 
@@ -67,7 +74,8 @@ This repo is being built in phases. Current state:
 - [x] Business recommendations write-up (`reports/findings.md`)
 - [x] Power BI dashboard — Revenue Overview page (`dashboard/`)
 - [x] Power BI dashboard — RFM Analysis page (`dashboard/`)
-- [ ] Power BI dashboard — cohort / product performance pages
+- [x] Power BI dashboard — Cohort Retention page (`dashboard/`)
+- [ ] Power BI dashboard — Product Performance page
 
 ## Tech stack
 
