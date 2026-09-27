@@ -17,7 +17,17 @@ Run from the **project root** (not from inside `sql/`) — every `\copy` path
 in these scripts is relative to the project root, and each script's `\copy`
 exports land in `dashboard/data/` for Power BI.
 
-No local Postgres? `01`–`03` (the schema/load/fact-table layer) also run
+No local Postgres? `cp .env.example .env && docker compose up -d postgres`
+starts one in Docker (mapped to port 5433 by default, so it won't collide
+with a Postgres you might already have running locally on 5432) — then
+`source .env` and run the same `psql` commands above against `$DATABASE_URL`
+instead of `-d ecommerce_analytics`. See the root `README.md`'s
+"Reproducing this project" section for the exact commands, and
+`tests/test_postgres_pipeline.py` for an automated check that `01`–`03`
+still reproduce the known-good numbers from `03_fact_sales.sql`'s sanity
+check (1,625 line items, 695 orders, $311,111 revenue).
+
+Still don't want Docker? `01`–`03` (the schema/load/fact-table layer) also run
 unmodified against [DuckDB](https://duckdb.org/) (`duckdb
 ecommerce_analytics.duckdb` then `.read sql/01_schema.sql`, swapping `\copy
 ... FROM 'file' WITH (...)` for DuckDB's `COPY ... FROM 'file' (...)` syntax

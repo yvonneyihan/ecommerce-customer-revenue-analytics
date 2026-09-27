@@ -77,6 +77,16 @@ This repo is being built in phases. Current state:
 - [x] Power BI dashboard — Cohort Retention page (`dashboard/`)
 - [ ] Power BI dashboard — Product Performance page
 
+**Data Engineering upgrade** (in progress — see `.env.example`, `docker-compose.yml`, `tests/`):
+
+- [x] Dockerized Postgres + `.env`-based config (`docker-compose.yml`, `.env.example`, `src/ecommerce_pipeline/config.py`)
+- [x] pytest suite: config unit tests + a DB-backed reconciliation test against the known-good numbers above
+- [ ] dbt Core models (staging/intermediate/marts) replacing the hand-written `sql/03`–`07` views
+- [ ] Automated ingestion (local CSV / S3 → Postgres, incremental loading)
+- [ ] Data quality/reconciliation checks wired into the pipeline (not just notebook narrative)
+- [ ] Apache Airflow DAG orchestrating ingestion → transform → test
+- [ ] GitHub Actions CI running pytest + dbt on every PR
+
 ## Tech stack
 
 Python (pandas, matplotlib) in Jupyter · PostgreSQL-compatible SQL · Power BI
@@ -115,6 +125,13 @@ dashboard/
   README.md                Power BI page write-ups
   data/                    CSV/xlsx exports uploaded to Power BI Service
   screenshots/             dashboard page screenshots
+src/
+  ecommerce_pipeline/      config.py — env-driven DATABASE_URL, more to come
+tests/
+  test_config.py           unit tests for config.py (no DB needed)
+  test_postgres_pipeline.py  runs sql/01-03 against Postgres, checks known-good numbers
+docker-compose.yml          Postgres service for local/Docker development
+.env.example                template for required env vars (copy to .env, gitignored)
 ```
 
 ## Source data
@@ -169,12 +186,33 @@ for nb in notebooks/0*.ipynb; do
 done
 
 # 2. (optional) load the same data into PostgreSQL and rebuild the Power BI exports
+#
+# Option A — Docker (no local Postgres install needed):
+cp .env.example .env
+docker compose up -d postgres
+set -a && source .env && set +a
+for f in sql/0*.sql; do psql "$DATABASE_URL" -f "$f"; done
+#
+# Option B — a local Postgres install:
 createdb ecommerce_analytics
 for f in sql/0*.sql; do psql -d ecommerce_analytics -f "$f"; done
 ```
 
 See `sql/README.md` for SQL-specific notes (including running against DuckDB
-if you don't have a local Postgres server).
+if you don't have a local or Docker Postgres available).
+
+### Running the test suite
+
+```bash
+pip install -r requirements-dev.txt
+pytest tests/            # config tests always run; DB tests auto-skip if postgres isn't up
+```
+
+The DB-backed tests in `tests/test_postgres_pipeline.py` run `sql/01`–`03`
+against whichever Postgres `DATABASE_URL` points at and assert the result
+matches the known-good numbers above (1,625 line items, 695 orders, $311,111
+revenue) — a regression check that the schema/load/fact-view layer still
+reproduces the notebook's numbers exactly.
 
 ## License
 
