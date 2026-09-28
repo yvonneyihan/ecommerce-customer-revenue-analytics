@@ -81,8 +81,8 @@ This repo is being built in phases. Current state:
 
 - [x] Dockerized Postgres + `.env`-based config (`docker-compose.yml`, `.env.example`, `src/ecommerce_pipeline/config.py`)
 - [x] pytest suite: config unit tests + a DB-backed reconciliation test against the known-good numbers above
+- [x] Automated, incremental (upsert) ingestion from local CSV → Postgres (`src/ecommerce_pipeline/ingestion/load_csv.py`) — S3 as a source is still open
 - [ ] dbt Core models (staging/intermediate/marts) replacing the hand-written `sql/03`–`07` views
-- [ ] Automated ingestion (local CSV / S3 → Postgres, incremental loading)
 - [ ] Data quality/reconciliation checks wired into the pipeline (not just notebook narrative)
 - [ ] Apache Airflow DAG orchestrating ingestion → transform → test
 - [ ] GitHub Actions CI running pytest + dbt on every PR
@@ -126,10 +126,15 @@ dashboard/
   data/                    CSV/xlsx exports uploaded to Power BI Service
   screenshots/             dashboard page screenshots
 src/
-  ecommerce_pipeline/      config.py — env-driven DATABASE_URL, more to come
+  ecommerce_pipeline/
+    config.py              env-driven DATABASE_URL
+    ingestion/
+      load_csv.py          upserts data/raw/*.csv into Postgres (see "Automated ingestion" above)
 tests/
+  conftest.py              shared Postgres-reachability skip marker + SQL-file runner
   test_config.py           unit tests for config.py (no DB needed)
   test_postgres_pipeline.py  runs sql/01-03 against Postgres, checks known-good numbers
+  test_ingestion.py        runs load_csv.py, checks row counts + idempotency + upsert-on-change
 docker-compose.yml          Postgres service for local/Docker development
 .env.example                template for required env vars (copy to .env, gitignored)
 ```
@@ -201,6 +206,21 @@ for f in sql/0*.sql; do psql -d ecommerce_analytics -f "$f"; done
 See `sql/README.md` for SQL-specific notes (including running against DuckDB
 if you don't have a local or Docker Postgres available).
 
+### Automated ingestion (alternative to `sql/02_load_data.sql`)
+
+`src/ecommerce_pipeline/ingestion/load_csv.py` loads `data/raw/*.csv` into an
+already-created schema (run `sql/01_schema.sql` first) the same way
+`sql/02_load_data.sql` does, but as an upsert — safe to rerun after the
+source data changes, unlike `\copy` which only works once against an empty
+table. See the module's docstring for why `customers`/`products`/`orders`
+get row-level upserts while `order_items` is replaced as a whole table.
+
+```bash
+psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f sql/01_schema.sql
+PYTHONPATH=src python -m ecommerce_pipeline.ingestion.load_csv
+# then sql/03_fact_sales.sql onward, same as the SQL-only path
+```
+
 ### Running the test suite
 
 ```bash
@@ -212,7 +232,9 @@ The DB-backed tests in `tests/test_postgres_pipeline.py` run `sql/01`–`03`
 against whichever Postgres `DATABASE_URL` points at and assert the result
 matches the known-good numbers above (1,625 line items, 695 orders, $311,111
 revenue) — a regression check that the schema/load/fact-view layer still
-reproduces the notebook's numbers exactly.
+reproduces the notebook's numbers exactly. `tests/test_ingestion.py` covers
+the Python ingestion path the same way, plus idempotency (rerunning doesn't
+duplicate rows) and upsert-on-change (an edited source row updates in place).
 
 ## License
 
