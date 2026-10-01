@@ -35,3 +35,10 @@ def run_sql_file(relative_path: str) -> None:
 def fresh_schema():
     """Drops and recreates customers/products/orders/order_items from sql/01_schema.sql."""
     run_sql_file("sql/01_schema.sql")
+
+
+@pytest.fixture(scope="module")
+def loaded_database():
+    """Runs sql/01-03: schema, \\copy load, and the fact_sales* views, once per test module."""
+    for script in ("sql/01_schema.sql", "sql/02_load_data.sql", "sql/03_fact_sales.sql"):
+        run_sql_file(script)

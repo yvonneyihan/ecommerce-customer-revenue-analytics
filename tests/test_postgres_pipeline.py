@@ -13,46 +13,14 @@ automatically if the database is not reachable, so a plain `pytest tests/`
 run without Docker still passes.
 """
 
-import subprocess
-
 import psycopg2
 import pytest
 
-from ecommerce_pipeline.config import PROJECT_ROOT, get_database_url
+from ecommerce_pipeline.config import get_database_url
+from tests.conftest import requires_postgres
 
-SQL_SCRIPTS = [
-    "sql/01_schema.sql",
-    "sql/02_load_data.sql",
-    "sql/03_fact_sales.sql",
-]
-
-
-def _database_available() -> bool:
-    try:
-        conn = psycopg2.connect(get_database_url(), connect_timeout=3)
-        conn.close()
-        return True
-    except psycopg2.OperationalError:
-        return False
-
-
-requires_postgres = pytest.mark.skipif(
-    not _database_available(),
-    reason="Postgres is not reachable — run `docker compose up -d postgres` first",
-)
-
-
-@pytest.fixture(scope="module")
-def loaded_database():
-    for script in SQL_SCRIPTS:
-        result = subprocess.run(
-            ["psql", get_database_url(), "-v", "ON_ERROR_STOP=1", "-f", script],
-            cwd=PROJECT_ROOT,
-            capture_output=True,
-            text=True,
-        )
-        assert result.returncode == 0, f"{script} failed:\n{result.stderr}"
-    yield
+# `loaded_database` (sql/01-03, module-scoped) and `requires_postgres` now
+# live in tests/conftest.py, shared with test_ingestion.py and test_quality.py.
 
 
 @requires_postgres

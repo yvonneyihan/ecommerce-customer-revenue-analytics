@@ -82,8 +82,8 @@ This repo is being built in phases. Current state:
 - [x] Dockerized Postgres + `.env`-based config (`docker-compose.yml`, `.env.example`, `src/ecommerce_pipeline/config.py`)
 - [x] pytest suite: config unit tests + a DB-backed reconciliation test against the known-good numbers above
 - [x] Automated, incremental (upsert) ingestion from local CSV → Postgres (`src/ecommerce_pipeline/ingestion/load_csv.py`) — S3 as a source is still open
+- [x] Data quality & reconciliation checks as code (`src/ecommerce_pipeline/quality/checks.py`) — the manual profiling in `notebooks/01` Sections 3–8/13, now runnable in pytest or as a standalone script that exits non-zero on a real anomaly
 - [ ] dbt Core models (staging/intermediate/marts) replacing the hand-written `sql/03`–`07` views
-- [ ] Data quality/reconciliation checks wired into the pipeline (not just notebook narrative)
 - [ ] Apache Airflow DAG orchestrating ingestion → transform → test
 - [ ] GitHub Actions CI running pytest + dbt on every PR
 
@@ -130,11 +130,14 @@ src/
     config.py              env-driven DATABASE_URL
     ingestion/
       load_csv.py          upserts data/raw/*.csv into Postgres (see "Automated ingestion" above)
+    quality/
+      checks.py            DQ/reconciliation checks as code (see "Data quality & reconciliation" above)
 tests/
-  conftest.py              shared Postgres-reachability skip marker + SQL-file runner
+  conftest.py              shared Postgres-reachability skip marker, SQL-file runner, loaded_database fixture
   test_config.py           unit tests for config.py (no DB needed)
   test_postgres_pipeline.py  runs sql/01-03 against Postgres, checks known-good numbers
   test_ingestion.py        runs load_csv.py, checks row counts + idempotency + upsert-on-change
+  test_quality.py          runs checks.py, checks every DQ figure + a clean reconcile()
 docker-compose.yml          Postgres service for local/Docker development
 .env.example                template for required env vars (copy to .env, gitignored)
 ```
@@ -221,6 +224,24 @@ PYTHONPATH=src python -m ecommerce_pipeline.ingestion.load_csv
 # then sql/03_fact_sales.sql onward, same as the SQL-only path
 ```
 
+### Data quality & reconciliation
+
+`src/ecommerce_pipeline/quality/checks.py` ports the manual profiling from
+`notebooks/01` (Sections 3–8 and 13) into reusable SQL-backed checks —
+orphaned foreign keys, null key fields, duplicate primary keys, the 139
+orders with no line items, the 33 legitimate duplicate `(order_id,
+product_id)` pairs, the 55 pre-signup orders, and the `fact_sales_completed`
+reconciliation numbers. `reconcile()` compares all of them against this
+dataset's documented, verified values (`KNOWN_GOOD` in that module) and
+returns any mismatches — a regression here means the data actually changed,
+not that someone forgot to recheck a notebook cell by hand.
+
+```bash
+# after loading data via either path above:
+PYTHONPATH=src python -m ecommerce_pipeline.quality.checks
+# → "Reconciliation OK" (exit 0) or a list of discrepancies (exit 1)
+```
+
 ### Running the test suite
 
 ```bash
@@ -235,6 +256,9 @@ revenue) — a regression check that the schema/load/fact-view layer still
 reproduces the notebook's numbers exactly. `tests/test_ingestion.py` covers
 the Python ingestion path the same way, plus idempotency (rerunning doesn't
 duplicate rows) and upsert-on-change (an edited source row updates in place).
+`tests/test_quality.py` asserts every data-quality figure above and that
+`checks.reconcile()` reports zero discrepancies against a freshly loaded
+database.
 
 ## License
 
