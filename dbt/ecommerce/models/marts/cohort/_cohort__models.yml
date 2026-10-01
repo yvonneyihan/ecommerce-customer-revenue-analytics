@@ -1,0 +1,18 @@
+version: 2
+
+models:
+  - name: customer_cohort
+    columns:
+      - name: customer_id
+        tests: [unique, not_null]
+  - name: cohort_sizes
+    columns:
+      - name: cohort_month
+        tests: [unique, not_null]
+  - name: cohort_retention_long
+    description: One row per cohort_month x period_number. Long format for Power BI's Matrix visual.
+    columns:
+      - name: cohort_month
+        tests: [not_null]
+      - name: period_number
+        tests: [not_null]

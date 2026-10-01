@@ -1,6 +1,14 @@
 # SQL layer
 
-PostgreSQL-compatible scripts. Run in order against an empty database:
+PostgreSQL-compatible scripts -- the **original, hand-written reference
+implementation** of this project's schema and analysis logic. `dbt/ecommerce/`
+(see the root README's "dbt transformations" section) now reproduces `03`–`07`
+as tested dbt models for pipeline use, in their own `staging`/`intermediate`/
+`marts` schemas so both can run side by side without colliding. These scripts
+aren't deprecated -- `01`–`02` are still how the schema/raw tables get
+created in the first place, and `03`–`07` remain the numbers everything else
+(dbt models, `ecommerce_pipeline.quality.checks`, the notebooks) is checked
+against. Run in order against an empty database:
 
 ```bash
 createdb ecommerce_analytics

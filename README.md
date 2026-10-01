@@ -83,7 +83,7 @@ This repo is being built in phases. Current state:
 - [x] pytest suite: config unit tests + a DB-backed reconciliation test against the known-good numbers above
 - [x] Automated, incremental (upsert) ingestion from local CSV → Postgres (`src/ecommerce_pipeline/ingestion/load_csv.py`) — S3 as a source is still open
 - [x] Data quality & reconciliation checks as code (`src/ecommerce_pipeline/quality/checks.py`) — the manual profiling in `notebooks/01` Sections 3–8/13, now runnable in pytest or as a standalone script that exits non-zero on a real anomaly
-- [ ] dbt Core models (staging/intermediate/marts) replacing the hand-written `sql/03`–`07` views
+- [x] dbt Core models — staging/intermediate/marts (`dbt/ecommerce/`), reproducing `sql/03`–`07` with schema + custom tests; `sql/` stays as the original hand-written reference (see `sql/README.md`)
 - [ ] Apache Airflow DAG orchestrating ingestion → transform → test
 - [ ] GitHub Actions CI running pytest + dbt on every PR
 
@@ -132,12 +132,26 @@ src/
       load_csv.py          upserts data/raw/*.csv into Postgres (see "Automated ingestion" above)
     quality/
       checks.py            DQ/reconciliation checks as code (see "Data quality & reconciliation" above)
+dbt/
+  ecommerce/               dbt project -- see "dbt transformations" above
+    dbt_project.yml
+    profiles.yml           project-local (not ~/.dbt/profiles.yml) -- use --profiles-dir .
+    models/
+      staging/             1:1 views over the raw tables (stg_customers, stg_orders, ...)
+      intermediate/        int_fact_sales / int_fact_sales_completed
+      marts/
+        revenue/           monthly_kpis, category_revenue, country_revenue, new_vs_returning, headline_kpis
+        rfm/                customer_rfm, rfm_segment_summary
+        cohort/             customer_cohort, cohort_sizes, cohort_retention_long
+        product/            product_performance, category_performance
+    tests/                 custom reconciliation tests (known-good numbers, duplicate pair count)
 tests/
   conftest.py              shared Postgres-reachability skip marker, SQL-file runner, loaded_database fixture
   test_config.py           unit tests for config.py (no DB needed)
   test_postgres_pipeline.py  runs sql/01-03 against Postgres, checks known-good numbers
   test_ingestion.py        runs load_csv.py, checks row counts + idempotency + upsert-on-change
   test_quality.py          runs checks.py, checks every DQ figure + a clean reconcile()
+  test_dbt.py              runs `dbt build`, checks marts.headline_kpis against the same numbers
 docker-compose.yml          Postgres service for local/Docker development
 .env.example                template for required env vars (copy to .env, gitignored)
 ```
@@ -242,6 +256,35 @@ PYTHONPATH=src python -m ecommerce_pipeline.quality.checks
 # → "Reconciliation OK" (exit 0) or a list of discrepancies (exit 1)
 ```
 
+### dbt transformations
+
+`dbt/ecommerce/` reproduces `sql/03`–`07` (the fact views through
+revenue/RFM/cohort/product marts) as dbt models in three layers —
+`staging` (1:1 over the raw tables), `intermediate` (`int_fact_sales` /
+`int_fact_sales_completed`), and `marts` (the same 12 tables `sql/04`–`07`
+export to `dashboard/data/`). Each layer lands in its own Postgres schema
+(`staging`/`intermediate`/`marts`, not `public`) so it never collides with
+the original hand-written views — both can run side by side. Schema tests
+(`unique`, `not_null`, `relationships`, `accepted_values`) cover the same
+constraints as `sql/01_schema.sql`'s `CHECK`s, plus two custom tests
+(`dbt/ecommerce/tests/`) asserting the same known-good reconciliation
+numbers as `ecommerce_pipeline.quality.checks` and the 33 legitimate
+duplicate line-item pairs.
+
+`sql/` remains the original, hand-written reference implementation — see
+`sql/README.md` for why both exist. Every number below was checked against
+it directly (and against `dashboard/README.md`'s documented Power BI
+figures) before this was written.
+
+```bash
+pip install -r requirements-dev.txt   # adds dbt-core / dbt-postgres
+psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f sql/01_schema.sql
+psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f sql/02_load_data.sql   # or the Python ingestion path above
+
+cd dbt/ecommerce
+dbt build --profiles-dir .   # runs every model, then every test
+```
+
 ### Running the test suite
 
 ```bash
@@ -258,7 +301,8 @@ the Python ingestion path the same way, plus idempotency (rerunning doesn't
 duplicate rows) and upsert-on-change (an edited source row updates in place).
 `tests/test_quality.py` asserts every data-quality figure above and that
 `checks.reconcile()` reports zero discrepancies against a freshly loaded
-database.
+database. `tests/test_dbt.py` runs `dbt build` end-to-end and checks
+`marts.headline_kpis` against the same numbers.
 
 ## License
 

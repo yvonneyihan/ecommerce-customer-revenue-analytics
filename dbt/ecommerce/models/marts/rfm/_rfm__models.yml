@@ -1,0 +1,17 @@
+version: 2
+
+models:
+  - name: customer_rfm
+    description: Per-customer R/F/M scores and segment. One row per Completed-order customer.
+    columns:
+      - name: customer_id
+        tests: [unique, not_null]
+      - name: segment
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['Champions', 'Loyal', 'Potential Loyalists', 'At Risk', 'Lost']
+  - name: rfm_segment_summary
+    columns:
+      - name: segment
+        tests: [unique, not_null]

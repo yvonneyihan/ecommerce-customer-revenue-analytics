@@ -1,0 +1,15 @@
+# Project-local profiles.yml (kept with the project, not ~/.dbt/profiles.yml)
+# so `dbt --profiles-dir dbt/ecommerce ...` is all that's needed. Reads the
+# same env vars as .env.example / docker-compose.yml -- `source .env` first.
+ecommerce:
+  target: dev
+  outputs:
+    dev:
+      type: postgres
+      host: "{{ env_var('POSTGRES_HOST', 'localhost') }}"
+      port: "{{ env_var('POSTGRES_PORT', '5433') | int }}"
+      user: "{{ env_var('POSTGRES_USER', 'ecommerce') }}"
+      password: "{{ env_var('POSTGRES_PASSWORD', 'ecommerce') }}"
+      dbname: "{{ env_var('POSTGRES_DB', 'ecommerce_analytics') }}"
+      schema: public
+      threads: 4

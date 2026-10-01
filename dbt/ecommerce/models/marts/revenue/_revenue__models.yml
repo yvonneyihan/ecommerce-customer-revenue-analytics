@@ -1,0 +1,25 @@
+version: 2
+
+models:
+  - name: monthly_kpis
+    description: Monthly revenue, order volume, AOV, and MoM growth. Feeds the Power BI Revenue Overview page.
+    columns:
+      - name: order_month
+        tests: [unique, not_null]
+  - name: category_revenue
+    columns:
+      - name: category
+        tests: [unique, not_null]
+  - name: country_revenue
+    columns:
+      - name: country
+        tests: [unique, not_null]
+  - name: new_vs_returning
+    columns:
+      - name: customer_type
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['New', 'Returning']
+  - name: headline_kpis
+    description: One row, for Power BI KPI cards.

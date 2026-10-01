@@ -1,0 +1,13 @@
+version: 2
+
+models:
+  - name: int_fact_sales
+    description: One row per order line, all statuses, enriched with customer/product/order attributes.
+    columns:
+      - name: order_item_id
+        tests: [unique, not_null]
+  - name: int_fact_sales_completed
+    description: int_fact_sales filtered to Completed orders only -- the base every revenue/RFM/cohort/product mart reads from.
+    columns:
+      - name: order_item_id
+        tests: [unique, not_null]

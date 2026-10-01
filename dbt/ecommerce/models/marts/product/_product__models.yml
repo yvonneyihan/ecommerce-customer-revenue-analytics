@@ -1,0 +1,13 @@
+version: 2
+
+models:
+  - name: product_performance
+    columns:
+      - name: product_id
+        tests: [unique, not_null]
+      - name: product_rank
+        tests: [unique, not_null]
+  - name: category_performance
+    columns:
+      - name: category
+        tests: [unique, not_null]

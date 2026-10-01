@@ -1,0 +1,72 @@
+version: 2
+
+sources:
+  - name: raw
+    description: >
+      The four base tables created by sql/01_schema.sql and loaded by either
+      sql/02_load_data.sql or ecommerce_pipeline.ingestion.load_csv. Live in
+      the `public` schema -- dbt's staging layer is the first model-based
+      read of them.
+    schema: public
+    tables:
+      - name: customers
+        description: "One row per customer. Grain: customer_id."
+        columns:
+          - name: customer_id
+            tests: [unique, not_null]
+          - name: country
+            tests: [not_null]
+          - name: signup_date
+            tests: [not_null]
+      - name: products
+        description: "One row per product. Grain: product_id."
+        columns:
+          - name: product_id
+            tests: [unique, not_null]
+      - name: orders
+        description: >
+          One row per order (header). Grain: order_id. Not every order has
+          line items -- 139 of 1,000 do not, by design; see
+          notebooks/01 Section 7.
+        columns:
+          - name: order_id
+            tests: [unique, not_null]
+          - name: customer_id
+            tests:
+              - not_null
+              - relationships:
+                  arguments:
+                    to: source('raw', 'customers')
+                    field: customer_id
+          - name: status
+            tests:
+              - accepted_values:
+                  arguments:
+                    values: ['Completed', 'Cancelled', 'Returned']
+      - name: order_items
+        description: >
+          One row per order line. Grain: order_item_id. (order_id,
+          product_id) is NOT unique -- 33 pairs are legitimate duplicate
+          lines, not a data error; see notebooks/01 Section 7 /
+          sql/README.md.
+        columns:
+          - name: order_item_id
+            tests: [unique, not_null]
+          - name: order_id
+            tests:
+              - not_null
+              - relationships:
+                  arguments:
+                    to: source('raw', 'orders')
+                    field: order_id
+          - name: product_id
+            tests:
+              - not_null
+              - relationships:
+                  arguments:
+                    to: source('raw', 'products')
+                    field: product_id
+          - name: quantity
+            tests: [not_null]
+          - name: price
+            tests: [not_null]

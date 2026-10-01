@@ -1,0 +1,31 @@
+name: 'ecommerce'
+version: '1.0.0'
+config-version: 2
+profile: 'ecommerce'
+
+model-paths: ["models"]
+test-paths: ["tests"]
+macro-paths: ["macros"]
+seed-paths: ["seeds"]
+snapshot-paths: ["snapshots"]
+analysis-paths: ["analyses"]
+
+target-path: "target"
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+# Mirrors sql/01-07's layering as dbt models, in their own schemas
+# (staging/intermediate/marts -- see macros/generate_schema_name.sql) so
+# they don't collide with the legacy views sql/03-07 create in `public`.
+models:
+  ecommerce:
+    staging:
+      +materialized: view
+      +schema: staging
+    intermediate:
+      +materialized: view
+      +schema: intermediate
+    marts:
+      +materialized: view
+      +schema: marts

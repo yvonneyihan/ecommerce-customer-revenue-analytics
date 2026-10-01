@@ -8,3 +8,7 @@ env/
 .env
 *.duckdb
 .vscode/
+dbt/ecommerce/target/
+dbt/ecommerce/logs/
+dbt/ecommerce/dbt_packages/
+dbt/ecommerce/.user.yml
