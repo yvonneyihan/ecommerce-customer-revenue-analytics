@@ -84,7 +84,7 @@ This repo is being built in phases. Current state:
 - [x] Automated, incremental (upsert) ingestion from local CSV → Postgres (`src/ecommerce_pipeline/ingestion/load_csv.py`) — S3 as a source is still open
 - [x] Data quality & reconciliation checks as code (`src/ecommerce_pipeline/quality/checks.py`) — the manual profiling in `notebooks/01` Sections 3–8/13, now runnable in pytest or as a standalone script that exits non-zero on a real anomaly
 - [x] dbt Core models — staging/intermediate/marts (`dbt/ecommerce/`), reproducing `sql/03`–`07` with schema + custom tests; `sql/` stays as the original hand-written reference (see `sql/README.md`)
-- [ ] Apache Airflow DAG orchestrating ingestion → transform → test
+- [x] Apache Airflow DAG orchestrating schema → ingest → dbt build → reconcile (`airflow/`), containerized alongside Postgres in `docker-compose.yml`
 - [ ] GitHub Actions CI running pytest + dbt on every PR
 
 ## Tech stack
@@ -152,7 +152,11 @@ tests/
   test_ingestion.py        runs load_csv.py, checks row counts + idempotency + upsert-on-change
   test_quality.py          runs checks.py, checks every DQ figure + a clean reconcile()
   test_dbt.py              runs `dbt build`, checks marts.headline_kpis against the same numbers
-docker-compose.yml          Postgres service for local/Docker development
+airflow/
+  Dockerfile               Airflow image + a separate dbt virtualenv (see "Orchestration (Airflow)" above)
+  dags/
+    ecommerce_elt_dag.py   create_schema -> ingest_data -> dbt_build -> reconcile
+docker-compose.yml          Postgres + Airflow services for local/Docker development
 .env.example                template for required env vars (copy to .env, gitignored)
 ```
 
@@ -284,6 +288,45 @@ psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f sql/02_load_data.sql   # or the Pytho
 cd dbt/ecommerce
 dbt build --profiles-dir .   # runs every model, then every test
 ```
+
+### Orchestration (Airflow)
+
+`airflow/` containerizes the dbt + ingestion pipeline as a 4-task Airflow
+DAG (`ecommerce_elt`, in `airflow/dags/ecommerce_elt_dag.py`):
+
+```
+create_schema  →  ingest_data  →  dbt_build  →  reconcile
+(sql/01)          (load_csv.py)   (dbt build)   (quality.checks.reconcile,
+                                                  against the dbt-built
+                                                  intermediate.int_fact_sales_completed)
+```
+
+Airflow's own dependencies notoriously conflict with dbt-core's (both pin
+versions of `click`/`jinja2`/etc.), so `airflow/Dockerfile` installs dbt
+into a **separate virtualenv** (`/opt/dbt-venv`) baked into the same image,
+invoked as a subprocess by the DAG rather than installed into Airflow's own
+environment — the standard fix for that conflict, without reaching for a
+second container or `KubernetesPodOperator` this project doesn't need yet.
+Runs `LocalExecutor` with its own small metadata Postgres (`airflow-postgres`,
+separate from the app's `postgres` service, which is what the DAG's tasks
+actually read/write) — no Celery/Redis.
+
+```bash
+docker compose up -d postgres airflow-postgres
+docker compose up airflow-init          # one-shot: migrates Airflow's DB, creates admin/admin (local-only demo login)
+docker compose up -d airflow-webserver airflow-scheduler
+# → http://localhost:8081 (or $AIRFLOW_WEBSERVER_PORT), login admin/admin
+
+# or, to run the DAG once without the UI:
+docker compose run --rm airflow-scheduler airflow dags test ecommerce_elt 2026-01-01
+```
+
+The DAG is unscheduled (`schedule=None`) and triggered manually — the
+source dataset is a static snapshot, not a live feed, so a cron schedule
+here would just be re-running the same numbers; see the DAG file's
+docstring. `docker compose stop airflow-webserver airflow-scheduler
+airflow-postgres` tears the orchestration layer back down without touching
+the app `postgres` service.
 
 ### Running the test suite
 

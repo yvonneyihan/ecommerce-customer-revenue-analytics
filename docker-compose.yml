@@ -1,3 +1,27 @@
+x-airflow-common-env: &airflow-common-env
+  AIRFLOW__CORE__EXECUTOR: LocalExecutor
+  AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-postgres:5432/airflow
+  AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+  AIRFLOW__WEBSERVER__SECRET_KEY: "local-demo-only-not-a-real-secret"
+  # Points at the `postgres` service's IN-NETWORK address (not localhost:5433
+  # from .env) -- these containers reach it as `postgres:5432` on the
+  # compose network. Used by both the DAG's BashOperator (DATABASE_URL) and
+  # dbt/ecommerce/profiles.yml (the individual POSTGRES_* vars).
+  POSTGRES_HOST: postgres
+  POSTGRES_PORT: "5432"
+  POSTGRES_USER: ${POSTGRES_USER:-ecommerce}
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ecommerce}
+  POSTGRES_DB: ${POSTGRES_DB:-ecommerce_analytics}
+  DATABASE_URL: postgresql://${POSTGRES_USER:-ecommerce}:${POSTGRES_PASSWORD:-ecommerce}@postgres:5432/${POSTGRES_DB:-ecommerce_analytics}
+
+x-airflow-common-volumes: &airflow-common-volumes
+  - ./airflow/dags:/opt/airflow/dags
+  - airflow_logs:/opt/airflow/logs
+  - ./sql:/opt/airflow/project/sql:ro
+  - ./data:/opt/airflow/project/data:ro
+  - ./src:/opt/airflow/project/src:ro
+  - ./dbt:/opt/airflow/project/dbt
+
 services:
   postgres:
     image: postgres:16
@@ -16,5 +40,68 @@ services:
       timeout: 5s
       retries: 10
 
+  # --- Airflow (orchestrates the pipeline defined in airflow/dags/) -------
+  # Metadata DB for Airflow itself -- separate from the app's `postgres`
+  # service above, which is what the DAG's tasks read/write.
+  airflow-postgres:
+    image: postgres:16
+    container_name: ecommerce_analytics_airflow_postgres
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    volumes:
+      - airflow_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U airflow -d airflow"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # One-shot: migrates Airflow's metadata DB and creates a local admin user
+  # (admin/admin -- a local-only demo credential, not a real secret; see
+  # README.md's Airflow section). Exits after running.
+  airflow-init:
+    build: ./airflow
+    container_name: ecommerce_analytics_airflow_init
+    depends_on:
+      airflow-postgres:
+        condition: service_healthy
+    environment: *airflow-common-env
+    volumes: *airflow-common-volumes
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - airflow db migrate && (airflow users create --username admin --password admin --firstname Admin --lastname User --role Admin --email admin@example.com || true)
+
+  airflow-webserver:
+    build: ./airflow
+    container_name: ecommerce_analytics_airflow_webserver
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+    environment: *airflow-common-env
+    volumes: *airflow-common-volumes
+    ports:
+      - "${AIRFLOW_WEBSERVER_PORT:-8081}:8080"
+    command: webserver
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail http://localhost:8080/health"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+
+  airflow-scheduler:
+    build: ./airflow
+    container_name: ecommerce_analytics_airflow_scheduler
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+    environment: *airflow-common-env
+    volumes: *airflow-common-volumes
+    command: scheduler
+
 volumes:
   postgres_data:
+  airflow_postgres_data:
+  airflow_logs:

@@ -155,15 +155,17 @@ class FactSalesSummary:
     total_revenue: float
 
 
-def fact_sales_completed_summary(conn) -> FactSalesSummary:
-    """Requires fact_sales_completed (sql/03_fact_sales.sql) to already exist."""
+def fact_sales_completed_summary(conn, table: str = "fact_sales_completed") -> FactSalesSummary:
+    """
+    Requires `table` to already exist -- the default, public.fact_sales_completed,
+    comes from sql/03_fact_sales.sql. The dbt-based pipeline (see
+    dbt/ecommerce/ and airflow/dags/ecommerce_elt_dag.py) doesn't create that
+    legacy view; pass table="intermediate.int_fact_sales_completed" there
+    instead. `table` is always an internal, hardcoded choice (never external
+    input), so building the query with an f-string is safe here.
+    """
     with conn.cursor() as cur:
-        cur.execute(
-            """
-            SELECT COUNT(*), COUNT(DISTINCT order_id), SUM(revenue)
-            FROM fact_sales_completed
-            """
-        )
+        cur.execute(f"SELECT COUNT(*), COUNT(DISTINCT order_id), SUM(revenue) FROM {table}")
         line_items, distinct_orders, total_revenue = cur.fetchone()
     return FactSalesSummary(line_items, distinct_orders, float(total_revenue))
 
@@ -202,12 +204,21 @@ class Discrepancy:
     actual: Any
 
 
-def reconcile(conn, include_fact_sales: bool = True) -> list:
+def reconcile(
+    conn,
+    include_fact_sales: bool = True,
+    fact_sales_table: str = "fact_sales_completed",
+) -> list:
     """
     Runs every check and compares against KNOWN_GOOD (plus the
     fact_sales_completed summary, if include_fact_sales). Returns a list of
     Discrepancy for anything that didn't match -- empty list means a clean
     reconciliation.
+
+    `fact_sales_table` defaults to the legacy public.fact_sales_completed
+    view (sql/03_fact_sales.sql). Pass "intermediate.int_fact_sales_completed"
+    when reconciling the dbt-based pipeline instead (see
+    airflow/dags/ecommerce_elt_dag.py), which doesn't create that view.
     """
     discrepancies = []
     for name, check_fn in _SCALAR_CHECKS.items():
@@ -217,7 +228,7 @@ def reconcile(conn, include_fact_sales: bool = True) -> list:
             discrepancies.append(Discrepancy(name, expected, actual))
 
     if include_fact_sales:
-        summary = fact_sales_completed_summary(conn)
+        summary = fact_sales_completed_summary(conn, table=fact_sales_table)
         expected_fact_sales = {
             "fact_sales_completed_line_items": 1625,
             "fact_sales_completed_distinct_orders": 695,
